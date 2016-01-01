@@ -1,5 +1,9 @@
 #!/bin/bash
 
+
+arp_db="/var/log/arp_db.log"
+email="cristianlupu@gmail.com"
+
 _DEBUG="on"
 function DEBUG()
 {
@@ -7,7 +11,6 @@ function DEBUG()
 }
 
 DEBUG echo '[DEBUG] started support-script'
-arp_db="arp_database.txt"
 
 #clean arp database
 [ -f $arp_db ] && rm -f $arp_db; touch $arp_db
@@ -30,12 +33,12 @@ do
 		then
 			ip=$(echo $line| cut -d " " -f4)
 			mac=$(echo $line| cut -d " " -f6| sed -e 's/,$//g')
-			found=$(grep -q $mac $arp_db ; echo $?)
-			if [ "$found" = "1" ] #MAC NOT in the DB
+			found=$(grep -q $ip $arp_db ; echo $?)
+			if [ "$found" = "1" ] #IP NOT in the DB
 				then
 				echo -e "$mac $ip" >> $arp_db
 				DEBUG echo "[DEBUG] New entry in ARP database for MAC $mac attached to IP $ip"
-			else # MAC in the DB
+			else # IP in the DB
 				mac_orig=$(egrep "$ip\$" $arp_db | cut -d " " -f1)
 				if [ "$mac_orig" = "$mac" ]
 					then

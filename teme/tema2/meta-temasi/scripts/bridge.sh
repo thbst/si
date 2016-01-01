@@ -2,7 +2,7 @@
 
 if [ `whoami` != "root" ]
 	then
-	echo "user is not root"
+	echo "[ERROR] user is not root, please run again this script as root"
 	exit
 fi
 

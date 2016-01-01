@@ -1,3 +1,25 @@
 #!/bin/bash
 
-echo '====================run-script' > /dev/ttyAMA0
+echo "[DEBUG] run-script $1" > /dev/ttyAMA0
+TCPDUMP_LOG_FILE="/var/log/tcpdump.log"
+IDS_LOG_FILE="/var/log/ids.log"
+
+case "$1" in
+  start)
+    echo -n "Loading IDS"
+    touch $TCPDUMP_LOG_FILE
+    touch $IDS_LOG_FILE
+    /usr/sbin/tcpdump -ni any > $TCPDUMP_LOG_FILE | tail -f $TCPDUMP_LOG_FILE | egrep "^[0-9][0-9]" | support-script | tee -a $IDS_LOG_FILE > /dev/ttyAMA0 2>&1 &
+    echo "."
+    ;;
+  stop)
+    echo -n "Unloading IDS"
+    /usr/bin/killall -9 tcpdump
+    echo "."
+    ;;
+  *)
+    echo "Usage: $0 {start|stop}"
+    exit 1
+esac
+
+exit 0

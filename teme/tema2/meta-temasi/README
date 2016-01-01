@@ -56,8 +56,9 @@ In subdirectorul scripts din directorul meta-temasi exista un script executabil 
 
 Instructiuni: 
 
+cp archive.zip /home/user/poky/
+cd /home/user/poky
 unzip archive.zip
-cp -r meta-temasi /home/user/poky/
 vim /home/user/poky/build/conf/bblayers.conf
 ...
 BBFILES += "${TOPDIR}/recipes/images/*.bb"
@@ -71,8 +72,18 @@ BBLAYERS = "/home/user/poky/meta \
 
 II. Construire imagine
 
+1. Comenzi
+
 source /home/user/poky/oe-init-build-env /home/user/poky/build/
 bitbake rpi-tema-image
+
+
+2. Fisiere adaugate
+
+/var/log/arp_db.log # tabela cu asocieri ip mac folosita pentru detectarea atacurilor de tip arp spoofin
+/var/log/tcpdump.log # log tcpdump
+/var/log/ids.log # log-ul serviciului de IDS (cu output conform cerintelor din enunt)
+
 
 III. Testare
 ============
@@ -83,9 +94,56 @@ Pentru a putea rula qemu cu suport pentru aceasta interfata, am rulat urmatoarea
 
 sudo qemu-system-arm -machine versatilepb -cpu arm1176 -kernel /home/user/si/tema2/zImage -append "root=/dev/sda rw console=ttyAMA0 console=tty1" -serial stdio -net nic,model=smc91c111,netdev=net0 -netdev bridge,br=virbr0,id=net0 -hda /home/user/poky/build/tmp/deploy/images/raspberrypi/rpi-tema-image-raspberrypi.ext3
 
+Aceasta comanda se poate rula automat din scriptul launch.sh, disponibil in folderul /meta-temasi/scripts/
+
 2. Comenzi utilizate pentru debugging
 
-#rulare script de suport
-sudo tcpdump -ni any > output.txt | tail -f output.txt | egrep "^[0-9][0-9]" | ./support-script
+#simulare script local (fara qemu)
+./test.sh (din subfolderul de meta-temasi/scripts)
+
 #urmarire asocieri ip in tabela de ARP a scriptului
-tailf arp_database.txt
+tail -f /var/log/arp_db.log
+#urmarire log serviciu IDS
+tail -f /var/log/ids.log
+
+
+
+
+In cazul in care se doreste oprirea serviciului se poate rula urmatoarea comanda:
+/etc/init.d/run-script stop
+Pentru pornire manuala:
+/etc/init.d/run-script start
+
+Pentru a simula un atac de tip ARP spoofing se poate folosi utilitarul macchanger:
+
+macchanger -a virbr0
+Current MAC:   00:0c:29:d3:39:8e (VMware, Inc.)
+Permanent MAC: 00:00:00:00:00:00 (XEROX CORPORATION)
+New MAC:       00:18:02:d3:39:8e (Alpha Networks Inc.)
+
+
+
+
+3. Specificatii sistem testare
+
+BB_VERSION        = "1.24.0"
+BUILD_SYS         = "i686-linux"
+NATIVELSBSTRING   = "LinuxMint-17"
+TARGET_SYS        = "arm-poky-linux-gnueabi"
+MACHINE           = "raspberrypi"
+DISTRO            = "poky"
+DISTRO_VERSION    = "1.7"
+TUNE_FEATURES     = "arm armv6 vfp"
+TARGET_FPU        = "vfp"
+
+
+IV. Bonus
+=========
+
+1. Notificare prin e-mail
+
+In momentul detectarii unui atac de tip ARP Spoofing, se trimite mail catre o adresa de e-mail predefinita si care poate fi modificata prin editarea fisierului /usr/sbin/support-script (variabila $email)
+
+
+
+
