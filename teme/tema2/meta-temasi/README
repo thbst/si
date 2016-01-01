@@ -67,6 +67,10 @@ BBLAYERS = "/home/user/poky/meta \
 /home/user/poky/meta-temasi \
 "
 
+4. Rulare qemu
+
+cd /home/user/poky/meta-temasi/
+./launch.sh
 
 II. Construire imagine
 
@@ -89,14 +93,19 @@ bitbake rpi-tema-image
 ├── COPYING.MIT
 ├── kernel
 │   └── zImage -> imaginea de kernel utilizata
+├── launch.sh -> ruleaza din folderul curent qemu cu setarile testate
 ├── README
 ├── recipes
+│   ├── base-files -> setare hostname
+│   │   ├── base-files
+│   │   │   └── hostname
+│   │   └── base-files_3.0.14.bbappend
 │   ├── busybox
 │   │   ├── busybox_%.bbappend -> pentru activarea sendmail in busybox
 │   │   └── files
 │   │       └── sendmail.cfg
 │   ├── images
-│   │   └── rpi-tema-image.bb -> pentru construire imagine
+│   │   └── rpi-tema-image.bb -> pentru construire imagine, setare parola root
 │   ├── logrotate
 │   │   ├── logrotate
 │   │   │   └── ids
@@ -134,7 +143,6 @@ Pentru a putea rula qemu cu suport pentru aceasta interfata, am rulat urmatoarea
 
 sudo qemu-system-arm -machine versatilepb -cpu arm1176 -kernel /home/user/si/tema2/zImage -append "root=/dev/sda rw console=ttyAMA0 console=tty1" -serial stdio -net nic,model=smc91c111,netdev=net0 -netdev bridge,br=virbr0,id=net0 -hda /home/user/poky/build/tmp/deploy/images/raspberrypi/rpi-tema-image-raspberrypi.ext3
 
-Aceasta comanda se poate rula automat din scriptul launch.sh, disponibil in folderul /meta-temasi/scripts/
 IMPORTANT: pentru a putea rula cu succes, parametrii urmatori trebuiesc configurati corect:
 - kernel
 - hda
