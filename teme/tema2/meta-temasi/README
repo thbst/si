@@ -1,64 +1,91 @@
-This README file contains information on the contents of the
-temasi layer.
+Tema: 2
+Materie: Sisteme Incorporate (SI)
+Autor: Nume Prenume
+E-mail: email@domain
+Grupa: Grupa
+An universitar: 2015 - 2016
 
-Please see the corresponding sections below for details.
+
+I. Pregatire mediu de lucru
+===========================
 
 
-Dependencies
+1. Instalare initiala
+Pentru implementarea temei, s-au rulat urmatorii pasi pregatitori (aceeasi cu cei descrisi in solutia laboratorului de Yocto)
+
+-get yocto sources (tested with commit b8631416f12b8a904ce3deb036f9d5ce632937b0)
+ -run 'git clone git://git.yoctoproject.org/poky'
+ -change directory to '<poky-path>'
+ -run 'git checkout b8631416f12b8a904ce3deb036f9d5ce632937b0'
+-get raspberrypi yocto layer (tested with commit 6c6f44136f7e1c97bc45be118a48bd9b1fef1072)
+ -change directory to '<poky-path>'
+ -run 'git clone git://git.yoctoproject.org/meta-raspberrypi'
+ -change directory to '<poky-path>/meta-raspberrypi'
+ -run 'git checkout 6c6f44136f7e1c97bc45be118a48bd9b1fef1072'
+-prepare to build
+ -run 'source <poky-path>/oe-init-build-env <build-path>'
+ -add the following line to '<build-path>/conf/local.conf'
+    MACHINE = "raspberrypi"
+ -optionally add the following lines to '<build-path>/conf/local.conf'
+    BB_NUMBER_THREADS = "4"
+    PARALLEL_MAKE = "-j5"
+ -add the raspberrypi layer path '<poky-path>/meta-raspberrypi' to 'BBLAYERS' variable in '<build-path/conf/bblayers.conf'
+-build
+ -run 'bitbake rpi-basic-image' in same terminal as 'source ...'
+-get compatible kernel
+ -run 'wget http://cs.curs.pub.ro/wiki/si/_media/lab/2014/yocto/kernel.zip'
+ -extract kernel image with 'unzip kernel.zip'
+
+2. Setari de retea aditionale pt serverul de testare
+
+Acest pas este optional, dar util pentru a putea testa conectivitatea catre masina virtuala din qemu direct dintr-o retea direct conectata si a verifica functionalitatea avahi-daemon. 
+Instructiuni pe care le-am rulat pe masina fizica:
+
+sudo brctl addbr virbr 				# creare bridge
+sudo brctl addif virbr0 <interfata fizica>	# eth0 in cazul meu
+sudo ifconfig <interfata fizica> 0.0.0.0	# dezalocare ip de pe interfata fizica
+sudo ifconfig virbr0 <ip>/<prefix>		# alocare ip pe bridge
+sudo route add default gw <gateway>		# readaugare ruta implicita
+nslookup cs.curs.pub.ro 			# testare conexiune internet
+echo "allow virbr0" >> /etc/qemu/bridge.conf	# configurare qemu pt a accepta virbr0
+
+In subdirectorul scripts din directorul meta-temasi exista un script executabil bridge.sh care poate fi apelat pentru automatizarea setarilor de bridge
+
+
+3. Adaugarea layer-ului temasi in build-ul existent
+
+Instructiuni: 
+
+unzip archive.zip
+cp -r meta-temasi /home/user/poky/
+vim /home/user/poky/build/conf/bblayers.conf
+...
+BBFILES += "${TOPDIR}/recipes/images/*.bb"
+BBLAYERS = "/home/user/poky/meta \
+/home/user/poky/meta-yocto \
+/home/user/poky/meta-yocto-bsp \
+/home/user/poky/meta-raspberrypi \
+/home/user/poky/meta-temasi \
+"
+
+
+II. Construire imagine
+
+source /home/user/poky/oe-init-build-env /home/user/poky/build/
+bitbake rpi-tema-image
+
+III. Testare
 ============
 
-This layer depends on:
+1. Rulare din qemu din linie de comanda
 
-  URI: git://git.openembedded.org/bitbake
-  branch: master
+Pentru a putea rula qemu cu suport pentru aceasta interfata, am rulat urmatoarea comanda:
 
-  URI: git://git.openembedded.org/openembedded-core
-  layers: meta
-  branch: master
+sudo qemu-system-arm -machine versatilepb -cpu arm1176 -kernel /home/user/si/tema2/zImage -append "root=/dev/sda rw console=ttyAMA0 console=tty1" -serial stdio -net nic,model=smc91c111,netdev=net0 -netdev bridge,br=virbr0,id=net0 -hda /home/user/poky/build/tmp/deploy/images/raspberrypi/rpi-tema-image-raspberrypi.ext3
 
-  URI: git://git.yoctoproject.org/xxxx
-  layers: xxxx
-  branch: master
+2. Comenzi utilizate pentru debugging
 
-
-Patches
-=======
-
-Please submit any patches against the temasi layer to the
-xxxx mailing list (xxxx@zzzz.org) and cc: the maintainer:
-
-Maintainer: XXX YYYYYY <xxx.yyyyyy@zzzzz.com>
-
-
-Table of Contents
-=================
-
-  I. Adding the temasi layer to your build
- II. Misc
-
-
-I. Adding the temasi layer to your build
-=================================================
-
---- replace with specific instructions for the temasi layer ---
-
-In order to use this layer, you need to make the build system aware of
-it.
-
-Assuming the temasi layer exists at the top-level of your
-yocto build tree, you can add it to the build system by adding the
-location of the temasi layer to bblayers.conf, along with any
-other layers needed. e.g.:
-
-  BBLAYERS ?= " \
-    /path/to/yocto/meta \
-    /path/to/yocto/meta-yocto \
-    /path/to/yocto/meta-yocto-bsp \
-    /path/to/yocto/meta-temasi \
-    "
-
-
-II. Misc
-========
-
---- replace with specific information about the temasi layer ---
+#rulare script de suport
+sudo tcpdump -ni any > output.txt | tail -f output.txt | egrep "^[0-9][0-9]" | ./support-script
+#urmarire asocieri ip in tabela de ARP a scriptului
+tailf arp_database.txt
