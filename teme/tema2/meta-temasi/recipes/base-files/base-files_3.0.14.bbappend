@@ -1,0 +1,10 @@
+FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
+hostname="tema2.local"
+
+SRC_URI += "file://hostname \
+            "
+
+do_install_append () {
+    install -m 0644 ${WORKDIR}/hostname ${D}${sysconfdir}/hostname2
+}
+

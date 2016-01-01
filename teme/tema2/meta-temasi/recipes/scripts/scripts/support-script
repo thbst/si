@@ -1,0 +1,51 @@
+#!/bin/bash
+
+_DEBUG="on"
+function DEBUG()
+{
+ [ "$_DEBUG" == "on" ] &&  $@
+}
+
+DEBUG echo '[DEBUG] started support-script'
+arp_db="arp_database.txt"
+
+#clean arp database
+[ -f $arp_db ] && rm -f $arp_db; touch $arp_db
+while read line
+do
+	ip=""
+	mac=""
+	type=""
+	timestamp=$(echo $line| cut -d " " -f1)
+	protocol=$(echo $line| cut -d " " -f2| sed -e 's/,$//g')
+
+	if [ "$protocol" = "ARP" ] 
+		then
+#		DEBUG set -x
+		type=$(echo $line| cut -d " " -f3)
+#		DEBUG set +x
+
+
+		if [ "$type" = "Reply" ]
+		then
+			ip=$(echo $line| cut -d " " -f4)
+			mac=$(echo $line| cut -d " " -f6| sed -e 's/,$//g')
+			found=$(grep -q $mac $arp_db ; echo $?)
+			if [ "$found" = "1" ] #MAC NOT in the DB
+				then
+				echo -e "$mac $ip" >> $arp_db
+				DEBUG echo "[DEBUG] New entry in ARP database for MAC $mac attached to IP $ip"
+			else # MAC in the DB
+				mac_orig=$(egrep "$ip\$" $arp_db | cut -d " " -f1)
+				if [ "$mac_orig" = "$mac" ]
+					then
+					DEBUG echo "MAC $mac attached to IP $ip already in the DB; skipping"
+				else
+					echo "!!!ATTACK DETECTED!!! The host with MAC: $mac is using the IP $ip that belongs to MAC: $mac_orig"
+				fi
+			fi
+		fi
+	fi
+	echo "$timestamp $protocol $type $ip $mac"
+#echo $line
+done
