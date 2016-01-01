@@ -1,14 +1,13 @@
 Tema: 2
 Materie: Sisteme Incorporate (SI)
-Autor: Nume Prenume
-E-mail: email@domain
-Grupa: Grupa
+Autor: Lupu Cristian
+E-mail: cristianlupu@gmail.com
+Grupa: 342C2
 An universitar: 2015 - 2016
 
 
 I. Pregatire mediu de lucru
 ===========================
-
 
 1. Instalare initiala
 Pentru implementarea temei, s-au rulat urmatorii pasi pregatitori (aceeasi cu cei descrisi in solutia laboratorului de Yocto)
@@ -51,7 +50,6 @@ echo "allow virbr0" >> /etc/qemu/bridge.conf	# configurare qemu pt a accepta vir
 
 In subdirectorul scripts din directorul meta-temasi exista un script executabil bridge.sh care poate fi apelat pentru automatizarea setarilor de bridge
 
-
 3. Adaugarea layer-ului temasi in build-ul existent
 
 Instructiuni: 
@@ -78,23 +76,70 @@ source /home/user/poky/oe-init-build-env /home/user/poky/build/
 bitbake rpi-tema-image
 
 
-2. Fisiere adaugate
+2. Fisiere de log
 
-/var/log/arp_db.log # tabela cu asocieri ip mac folosita pentru detectarea atacurilor de tip arp spoofin
+/var/log/arp_db.log # tabela cu asocieri ip mac folosita pentru detectarea atacurilor de tip arp spoofing
 /var/log/tcpdump.log # log tcpdump
 /var/log/ids.log # log-ul serviciului de IDS (cu output conform cerintelor din enunt)
+
+3. Structura tema
+.
+├── conf
+│   └── layer.conf -> include lista de retete folosite
+├── COPYING.MIT
+├── kernel
+│   └── zImage -> imaginea de kernel utilizata
+├── README
+├── recipes
+│   ├── busybox
+│   │   ├── busybox_%.bbappend -> pentru activarea sendmail in busybox
+│   │   └── files
+│   │       └── sendmail.cfg
+│   ├── images
+│   │   └── rpi-tema-image.bb -> pentru construire imagine
+│   ├── logrotate
+│   │   ├── logrotate
+│   │   │   └── ids
+│   │   └── logrotate_3.8.7.bbappend -> pentru adaugarea configurarilor de rotatie a fisierelor de log
+│   ├── scripts
+│   │   ├── scripts -> scripturi folosite pentru a porni/opri automat serviciul de IDS
+│   │   │   ├── run-script
+│   │   │   ├── startup-script
+│   │   │   └── support-script
+│   │   └── scripts.bb
+│   └── tcpdump -> activare tcpdump
+│       ├── tcpdump
+│       │   ├── add-ptest.patch
+│       │   ├── run-ptest
+│       │   ├── tcpdump-configure-dlpi.patch
+│       │   └── unnecessary-to-check-libpcap.patch
+│       ├── tcpdump_4.7.4.bb
+│       ├── tcpslice
+│       │   ├── tcpslice-1.2a3-time.patch
+│       │   └── tcpslice-CVS.20010207-bpf.patch
+│       └── tcpslice_1.2a3.bb
+└── scripts -> scripturi ajutatoare pentru lansarea si testarea imaginii de qemu
+    ├── bridge.sh
+    ├── launch.sh
+    └── test.sh
+
 
 
 III. Testare
 ============
 
-1. Rulare din qemu din linie de comanda
+1. Rulare qemu
 
-Pentru a putea rula qemu cu suport pentru aceasta interfata, am rulat urmatoarea comanda:
+Pentru a putea rula qemu cu suport pentru aceasta interfata, am rulat urmatoarea comanda, dupa configurarea in prealabil a bridge-ului virbr0:
 
 sudo qemu-system-arm -machine versatilepb -cpu arm1176 -kernel /home/user/si/tema2/zImage -append "root=/dev/sda rw console=ttyAMA0 console=tty1" -serial stdio -net nic,model=smc91c111,netdev=net0 -netdev bridge,br=virbr0,id=net0 -hda /home/user/poky/build/tmp/deploy/images/raspberrypi/rpi-tema-image-raspberrypi.ext3
 
 Aceasta comanda se poate rula automat din scriptul launch.sh, disponibil in folderul /meta-temasi/scripts/
+IMPORTANT: pentru a putea rula cu succes, parametrii urmatori trebuiesc configurati corect:
+- kernel
+- hda
+- net
+- netdev
 
 2. Comenzi utilizate pentru debugging
 
@@ -106,22 +151,17 @@ tail -f /var/log/arp_db.log
 #urmarire log serviciu IDS
 tail -f /var/log/ids.log
 
-
-
-
 In cazul in care se doreste oprirea serviciului se poate rula urmatoarea comanda:
 /etc/init.d/run-script stop
 Pentru pornire manuala:
 /etc/init.d/run-script start
 
-Pentru a simula un atac de tip ARP spoofing se poate folosi utilitarul macchanger:
+Pentru a simula un atac de tip ARP spoofing se poate folosi utilitarul macchanger: (Instalare pe Ubuntu: apt-get install -y macchanger)
 
 macchanger -a virbr0
 Current MAC:   00:0c:29:d3:39:8e (VMware, Inc.)
 Permanent MAC: 00:00:00:00:00:00 (XEROX CORPORATION)
 New MAC:       00:18:02:d3:39:8e (Alpha Networks Inc.)
-
-
 
 
 3. Specificatii sistem testare
@@ -142,8 +182,27 @@ IV. Bonus
 
 1. Notificare prin e-mail
 
-In momentul detectarii unui atac de tip ARP Spoofing, se trimite mail catre o adresa de e-mail predefinita si care poate fi modificata prin editarea fisierului /usr/sbin/support-script (variabila $email)
+In momentul detectarii unui atac de tip ARP Spoofing, se trimite mail catre o adresa de e-mail predefinita si care poate fi modificata prin editarea fisierului /usr/sbin/support-script:
+	recipient=""
+	sender=""
+	smtp_server=""
+	smtp_user=""
+	smtp_pass=""
+	alert_msg_file="/tmp/alert.txt"
 
 
+Pentru trimiterea notificarii se foloseste:
+- sendmail (adaugat prin modificarea busybox .config cu CONFIG_SENDMAIL=y; aceasta variabila fiind inserata printr-un fisier .bbappend)
+Apelarea sendmail este facuta prin urmatoarea linie de comanda:
+sendmail $recipient -f $sender -S $smtp_server -au $smtp_user -ap $smtp_pass < $alert_msg_file
 
+2. Salvarea informațiilor logate și pe dispozitiv și limitarea spațiului consumat folosind logrotate
 
+Odata cu construirea imaginii, se instaleaza serviciul de logrotate impreuna cu urmatoarea configuratie specifica, localizata in /etc/logrotate.d/ids:
+/var/log/tcpdump.log /var/log/ids.log /var/log/arp_db.log {
+   rotate 5
+   size 1M
+   missingok
+   weekly
+   create 0600 root root
+}
