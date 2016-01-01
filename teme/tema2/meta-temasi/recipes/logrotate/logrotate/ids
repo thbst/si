@@ -1,0 +1,7 @@
+/var/log/tcpdump.log /var/log/ids.log /var/log/arp_db.log {
+   rotate 5
+   size 1M
+   missingok
+   weekly
+   create 0600 root root
+}

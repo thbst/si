@@ -2,7 +2,13 @@
 
 
 arp_db="/var/log/arp_db.log"
-email="cristianlupu@gmail.com"
+recipient=""
+sender=""
+smtp_server=""
+smtp_user=""
+smtp_pass=""
+alert_msg_file="/tmp/alert.txt"
+
 
 _DEBUG="on"
 function DEBUG()
@@ -45,6 +51,12 @@ do
 					DEBUG echo "MAC $mac attached to IP $ip already in the DB; skipping"
 				else
 					echo "!!!ATTACK DETECTED!!! The host with MAC: $mac is using the IP $ip that belongs to MAC: $mac_orig"
+					#notificare e-mail
+					if [ "$recipient" != "" ]
+						then
+						echo "!!!ATTACK DETECTED!!! The host with MAC: $mac is using the IP $ip that belongs to MAC: $mac_orig" > $alert_msg_file
+						sendmail $recipient -f $sender -S $smtp_server -au $smtp_user -ap $smtp_pass < $alert_msg_file
+					fi
 				fi
 			fi
 		fi
